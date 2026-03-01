@@ -1,0 +1,39 @@
+:root {
+  --ink-amber: #d4a017;
+  --ink-amethyst: #7b2d8e;
+  --ink-emerald: #0d7d4a;
+  --ink-ruby: #b31e2e;
+  --ink-sapphire: #1a5fb4;
+  --ink-steel: #5e6b73;
+  /* Apple-style tokens */
+  --apple-blue: #0071e3;
+  --apple-blue-hover: #0077ed;
+  --apple-gray-1: #f5f5f7;
+  --apple-gray-2: #e8e8ed;
+  --apple-gray-3: #d2d2d7;
+  --apple-gray-4: #86868b;
+  --apple-gray-5: #1d1d1f;
+  --apple-white: #ffffff;
+  --apple-radius: 12px;
+  --apple-radius-sm: 8px;
+  --apple-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --apple-shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--apple-gray-1);
+  color: var(--apple-gray-5);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.47059;
+  letter-spacing: -0.022em;
+  -webkit-font-smoothing: antialiased;
+}
