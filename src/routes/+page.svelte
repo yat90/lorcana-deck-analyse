@@ -1,5 +1,7 @@
 <script>
   import { onMount } from 'svelte';
+  import { parseDeckList } from '$lib/deck.js';
+  import { fetchDeckCards } from '$lib/lorcast.js';
   import { probAtLeastOneInStartingHand, probDrawIfNotInStartHand } from '$lib/probability.js';
   import { getDecks, saveDeck, getDeck, deleteDeck } from '$lib/db.js';
 
@@ -91,20 +93,16 @@
     result = null;
     statisticsCounts = [];
     try {
-      const res = await fetch('/api/deck-analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deckList })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        error = data.error || res.statusText;
+      const entries = parseDeckList(deckList);
+      if (entries.length === 0) {
+        error = 'Keine gültigen Zeilen in der Deckliste (Format: "Anzahl Kartenname")';
         return;
       }
-      result = data;
-      statisticsCounts = (data.cards || []).map((c) => Math.min(4, Math.max(1, c.count)));
+      const cards = await fetchDeckCards(entries);
+      result = { cards };
+      statisticsCounts = cards.map((c) => Math.min(4, Math.max(1, c.count)));
     } catch (e) {
-      error = e.message || 'Netzwerkfehler';
+      error = e.message || 'Netzwerkfehler. Prüfe die Konsole (z. B. CORS bei Lorcast-API).';
     } finally {
       loading = false;
     }

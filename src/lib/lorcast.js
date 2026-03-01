@@ -16,7 +16,6 @@ function buildSearchQuery(cardName) {
  */
 async function fetchCardByName(cardName) {
   const q = buildSearchQuery(cardName);
-  console.log(q);
   const url = `${LORCAST_API}/cards/search?q=${encodeURIComponent(q)}&unique=cards`;
   const res = await fetch(url);
   if (!res.ok) return null;
