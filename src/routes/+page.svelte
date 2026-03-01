@@ -1,5 +1,7 @@
 <script>
+  import { onMount } from 'svelte';
   import { probAtLeastOneInStartingHand, probDrawIfNotInStartHand } from '$lib/probability.js';
+  import { getDecks, saveDeck, getDeck, deleteDeck } from '$lib/db.js';
 
   let deckList = `2 Ink Geyser
 4 John Silver - Alien Pirate
@@ -19,6 +21,69 @@
   let activeTab = 'statistics'; // 'information' | 'statistics' (Starting Hand)
   /** @type {number[]} Mutable copy counts for statistics tab (1–4 per card) */
   let statisticsCounts = [];
+  /** @type {Array<{ id: number, name: string, deckList: string, cards: unknown[], createdAt: number }>} */
+  let savedDecks = [];
+  let saveError = '';
+  let saving = false;
+
+  onMount(() => {
+    loadSavedDecks();
+  });
+
+  async function loadSavedDecks() {
+    try {
+      savedDecks = await getDecks();
+    } catch (e) {
+      console.error('Failed to load saved decks', e);
+    }
+  }
+
+  async function saveCurrentDeck() {
+    if (!result?.cards?.length) return;
+    saving = true;
+    saveError = '';
+    const name = window.prompt('Name des Decks:', `Deck ${new Date().toLocaleDateString('de-DE')}`)?.trim() || `Deck ${Date.now()}`;
+    if (!name) {
+      saving = false;
+      return;
+    }
+    try {
+      await saveDeck({
+        name,
+        deckList,
+        cards: result.cards
+      });
+      await loadSavedDecks();
+    } catch (e) {
+      saveError = e.message || 'Speichern fehlgeschlagen';
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function openSavedDeck(id) {
+    try {
+      const deck = await getDeck(id);
+      if (!deck) return;
+      deckList = deck.deckList;
+      result = { cards: deck.cards };
+      statisticsCounts = (deck.cards || []).map((c) => Math.min(4, Math.max(1, c.count)));
+      activeTab = 'statistics';
+    } catch (e) {
+      console.error('Failed to open deck', e);
+    }
+  }
+
+  async function removeDeck(id, e) {
+    e?.stopPropagation();
+    if (!window.confirm('Deck wirklich löschen?')) return;
+    try {
+      await deleteDeck(id);
+      await loadSavedDecks();
+    } catch (e) {
+      console.error('Failed to delete deck', e);
+    }
+  }
 
   async function analyze() {
     loading = true;
@@ -87,6 +152,35 @@
     <button type="button" on:click={analyze} disabled={loading}>
       {loading ? 'Lade Karten …' : 'Deck analysieren'}
     </button>
+    {#if result?.cards?.length}
+      <button type="button" class="btn-secondary" on:click={saveCurrentDeck} disabled={saving}>
+        {saving ? 'Speichern …' : 'Deck speichern'}
+      </button>
+    {/if}
+  </section>
+
+  <section class="saved-decks-section" aria-labelledby="saved-decks-heading">
+    <h2 id="saved-decks-heading">Meine Decks</h2>
+    {#if saveError}
+      <p class="save-error">{saveError}</p>
+    {/if}
+    {#if savedDecks.length === 0}
+      <p class="saved-decks-empty">Noch keine Decks gespeichert. Analysiere ein Deck und klicke auf „Deck speichern“.</p>
+    {:else}
+      <ul class="saved-decks-list">
+        {#each savedDecks as deck (deck.id)}
+          <li class="saved-deck-item">
+            <button type="button" class="saved-deck-open" on:click={() => openSavedDeck(deck.id)}>
+              <span class="saved-deck-name">{deck.name}</span>
+              <span class="saved-deck-meta">
+                {deck.cards?.reduce((s, c) => s + (c.count || 0), 0) ?? 0} Karten · {new Date(deck.createdAt).toLocaleDateString('de-DE')}
+              </span>
+            </button>
+            <button type="button" class="saved-deck-delete" aria-label="Deck löschen" on:click={(e) => removeDeck(deck.id, e)}>×</button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </section>
 
   {#if error}
@@ -326,6 +420,107 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: var(--apple-gray-2);
+    color: var(--apple-gray-5);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--apple-gray-3);
+  }
+
+  .saved-decks-section {
+    margin-bottom: 2rem;
+  }
+
+  .saved-decks-section h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .save-error {
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    color: #c53030;
+  }
+
+  .saved-decks-empty {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--apple-gray-4);
+  }
+
+  .saved-decks-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .saved-deck-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--apple-white);
+    border-radius: var(--apple-radius-sm);
+    box-shadow: var(--apple-shadow);
+    overflow: hidden;
+  }
+
+  .saved-deck-open {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .saved-deck-open:hover {
+    background: var(--apple-gray-1);
+  }
+
+  .saved-deck-name {
+    display: block;
+    font-weight: 600;
+    color: var(--apple-gray-5);
+  }
+
+  .saved-deck-meta {
+    display: block;
+    font-size: 0.8125rem;
+    color: var(--apple-gray-4);
+    margin-top: 0.25rem;
+  }
+
+  .saved-deck-delete {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--apple-gray-4);
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .saved-deck-delete:hover {
+    color: #c53030;
+    background: #fff5f5;
   }
 
   .error {

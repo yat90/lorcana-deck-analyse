@@ -14,7 +14,8 @@ const config = {
       strict: true
     }),
     paths: {
-      base: process.env.BASE_PATH ?? ''
+      // SvelteKit: base must be '' or start with / and must NOT end with /
+      base: (process.env.BASE_PATH ?? '').replace(/\/$/, '')
     },
     prerender: {
       entries: ['*']
